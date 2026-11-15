@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Neko Launcher
+Comment=A modern Minecraft Java Edition launcher
+Exec=neko-launcher
+Icon=neko-launcher
+Terminal=false
+Categories=Game;Java;
+Keywords=Minecraft;Launcher;Modrinth;CurseForge;
+StartupNotify=true

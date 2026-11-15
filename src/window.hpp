@@ -1,0 +1,101 @@
+#pragma once
+#include "core.hpp"
+#include <QtConcurrent>
+#include <QtWidgets>
+class Window : public QMainWindow {
+    Q_OBJECT
+  public:
+    Window();
+    ~Window() override;
+    int verifyUi(const QString &output);
+
+  private:
+    QString root;
+    QSettings settings;
+    neko::Account account;
+    QListWidget *instances{}, *results{}, *mods{};
+    QStackedWidget *pages{};
+    QPropertyAnimation *pageTransition{};
+    QWidget *sidebar{}, *heroCard{};
+    QBoxLayout *librarySplit{}, *libraryToolbar{}, *discoverToolbar{}, *heroLayout{}, *heroActionsLayout{};
+    QComboBox *groupFilter{}, *sortOrder{}, *viewMode{};
+    QGridLayout *collectionGrid{}, *discoverFilters{};
+    QBoxLayout *libraryHeader{}, *profileActions{}, *discoverBody{};
+    QWidget *discoverFilterPanel{};
+    QNetworkAccessManager *artworkNetwork{};
+    QLineEdit *instanceSearch{};
+    QCheckBox *favoritesOnly{};
+    QLabel *pageTitle{}, *collectionCount{};
+    QMenu *instanceActions{};
+    QButtonGroup *navigation{};
+    QPlainTextEdit *console{};
+    QLabel *status{}, *heading{}, *detail{}, *identity{};
+    QProgressBar *progress{};
+    QLineEdit *query{}, *offlineName{}, *clientId{}, *curseKey{}, *javaDefault{}, *jvmDefault{};
+    QTabBar *searchType{};
+    QComboBox *searchTarget{};
+    void refreshSearchTargets();
+    void updateSearchMode();
+    void installSelectedMod();
+    void storageAction(int action);
+    QComboBox *searchSort{}, *searchLoader{}, *searchCategory{}, *searchVersion{};
+    QLabel *searchSummary{}, *searchSelection{};
+    QPushButton *searchPrevious{}, *searchNext{}, *searchInstall{}, *searchFiltersToggle{};
+    bool searchFiltersExpanded = false;
+    QTimer *searchTimer{};
+    int searchOffset = 0;
+    quint64 searchGeneration = 0;
+    bool searchStarted = false;
+    std::shared_ptr<std::atomic_bool> searchCancellation;
+    void searchPacks(bool reset = true);
+    void scheduleSearch();
+    QComboBox *provider{}, *theme{}, *fontSize{};
+    QCheckBox *offline{};
+    QPushButton *play{}, *stop{}, *cancel{}, *accountButton{}, *heroStop{};
+    std::shared_ptr<std::atomic_bool> cancellation;
+    QProcess *game{};
+    QJsonArray catalog;
+    bool busy = false;
+    quint64 accountGeneration = 0;
+    bool graphicsFailed = false;
+    QString processToken;
+    QString activeInstanceId;
+    QElapsedTimer sessionClock;
+    qint64 sessionStartedAt = 0;
+    bool sessionActive = false;
+    bool stopRequested = false;
+    QJsonObject selected() const;
+    void reload();
+    void filterInstances();
+    void instanceMenu(const QPoint &position);
+    void openInstanceFolder(const QString &child = {});
+    void saveInstance(const QJsonObject &instance);
+    void log(const QString &message);
+    void task(std::function<QVariant(neko::Engine &)> work, std::function<void(QVariant)> done = {});
+    void newInstance();
+    void editInstance();
+    void launch();
+    void stopGame();
+    void startGame(const neko::Launch &plan, const neko::Json &instance);
+    void commandPalette();
+    void checkInstance();
+    void worldSnapshots();
+    void showHistory();
+    void importPack(QString path = {});
+    void missingDownloads(const neko::Json &instance);
+    void signIn();
+    void saveAccount();
+    void restoreAccount();
+    void applyTheme();
+    void showSearchResults(const QJsonArray &records, bool curse);
+    void fetchProjectArtwork(const QModelIndex &index, const QString &url);
+    void refreshMods();
+    void showPage(int index);
+    QWidget *libraryPage();
+    QWidget *discoverPage();
+    QWidget *accountsPage();
+    QWidget *settingsPage();
+    QWidget *modsPage();
+    void resizeEvent(QResizeEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
+};

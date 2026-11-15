@@ -352,6 +352,21 @@ int main(int argc, char **argv) {
                       "installed loader launch plan resolves");
             }
         }
+        if (app.arguments().contains("--legacy-forge-integration")) {
+            const Json legacy{{"version", "1.8.9"},
+                              {"loader", "Forge"},
+                              {"loaderVersion", "11.15.1.2318"},
+                              {"java", qEnvironmentVariable("NEKO_TEST_JAVA", "java")}};
+            const auto profile = engine.installForge(legacy, engine.version("1.8.9"));
+            const auto coordinate = QString("1.8.9-11.15.1.2318-1.8.9");
+            const auto library = root + "/libraries/net/minecraftforge/forge/" + coordinate +
+                                 "/forge-" + coordinate + ".jar";
+            check(profile["id"].toString().contains(coordinate) && QFileInfo(library).size() > 0,
+                  "legacy Forge coordinate installs its bundled universal library");
+            check(QFile::exists(root + "/versions/" + profile["id"].toString() + "/" +
+                                profile["id"].toString() + ".json"),
+                  "legacy Forge profile registered without unsupported client CLI mode");
+        }
         const QByteArray requiredBytes("expected-mod-version");
         const auto requiredHash =
             QString::fromLatin1(QCryptographicHash::hash(requiredBytes, QCryptographicHash::Sha1).toHex());

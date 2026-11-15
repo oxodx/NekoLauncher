@@ -23,7 +23,7 @@ Window::Window() {
     setCentralWidget(shell);
     sidebar = new QWidget;
     sidebar->setObjectName("sidebar");
-    sidebar->setFixedWidth(214);
+    sidebar->setFixedWidth(226);
     auto *nav = new QVBoxLayout(sidebar);
     nav->setContentsMargins(16, 20, 16, 20);
     nav->setSpacing(6);
@@ -71,7 +71,7 @@ Window::Window() {
     identity = label("Offline profile", "muted");
     identity->hide();
     row->addWidget(sidebar);
-    auto *main = new QWidget;
+    auto *main = new BackdropWidget;
     main->setObjectName("workspace");
     auto *mainLayout = new QVBoxLayout(main);
     mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -79,7 +79,7 @@ Window::Window() {
     auto *top = new QWidget;
     top->setObjectName("topbar");
     auto *topRow = new QHBoxLayout(top);
-    topRow->setContentsMargins(28, 12, 28, 12);
+    topRow->setContentsMargins(30, 14, 30, 14);
     pageTitle = label("Library", "wordmark");
     topRow->addWidget(pageTitle, 1);
     auto *javaBadge = label("Minecraft · Java Edition", "muted");
@@ -183,7 +183,7 @@ Window::~Window() {
 void Window::resizeEvent(QResizeEvent *event) {
     QMainWindow::resizeEvent(event);
     if (sidebar)
-        sidebar->setFixedWidth(width() >= 1120 ? 214 : 80);
+        sidebar->setFixedWidth(width() >= 1120 ? 226 : 80);
     if (auto *word = sidebar->findChild<QLabel *>("sidebarWordmark"))
         word->setVisible(width() >= 1120);
     for (auto *caption : sidebar->findChildren<QLabel *>())

@@ -134,6 +134,9 @@ int main(int argc, char **argv) {
             auto first = engine.searchPage({}, false, {}, filters);
             const auto hits = first["hits"].toArray();
             check(hits.size() == 3 && first["total"].toInt() > 3, "filtered search has paginated results");
+            const auto details = engine.projectDetails(hits.first().toObject(), false, {});
+            check(!details["title"].toString().isEmpty() && !details["body"].toString().isEmpty(),
+                  "full project details resolve from search results");
             double previous = std::numeric_limits<double>::max();
             for (const auto &value : hits) {
                 const auto hit = value.toObject();

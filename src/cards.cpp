@@ -242,7 +242,7 @@ void InstanceDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
     p.restore();
 }
 QSize DiscoverDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &) const {
-    return {240, qMax(152, option.fontMetrics.height() * 4 + 54)};
+    return {240, qMax(174, option.fontMetrics.height() * 4 + 68)};
 }
 void DiscoverDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
                              const QModelIndex &index) const {
@@ -256,22 +256,27 @@ void DiscoverDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
     const auto base = pal.color(QPalette::Base), accent = pal.color(QPalette::Highlight);
     p.setPen(QPen(selected ? accent : pal.color(QPalette::Mid), 1));
     p.setBrush(hover || selected ? blend(base, accent, .05) : base);
-    p.drawRoundedRect(r, 8, 8);
+    p.drawRoundedRect(r, 14, 14);
+    if (selected) {
+        p.setPen(Qt::NoPen);
+        p.setBrush(accent);
+        p.drawRoundedRect(QRectF(r.left(), r.top() + 18, 3, r.height() - 36), 1.5, 1.5);
+    }
     const auto data = index.data(Qt::UserRole).toJsonObject();
     const bool cf = index.data(Qt::UserRole + 1).toBool();
     const auto image = index.data(Qt::UserRole + 2).value<QPixmap>();
-    QRectF icon(r.x() + 18, r.center().y() - 32, 64, 64);
+    QRectF icon(r.x() + 20, r.center().y() - 38, 76, 76);
     p.save();
     QPainterPath clip;
-    clip.addRoundedRect(icon, 13, 13);
+    clip.addRoundedRect(icon, 18, 18);
     p.setClipPath(clip);
     p.fillRect(icon, blend(base, accent, .09));
     if (!image.isNull())
         drawCover(p, icon, image);
     else
-        glyph(Glyph::Mods, accent).paint(&p, icon.adjusted(18, 18, -18, -18).toRect());
+        glyph(Glyph::Mods, accent).paint(&p, icon.adjusted(21, 21, -21, -21).toRect());
     p.restore();
-    const auto x = icon.right() + 18, width = qMax(0., r.right() - x - 18);
+    const auto x = icon.right() + 20, width = qMax(0., r.right() - x - 20);
     const int fs = qMax(14, QFontInfo(option.font).pixelSize());
     const int line = qMax(23, option.fontMetrics.height() + 3);
     text(p, QRectF(x, r.top() + 12, width, line), (cf ? data["name"] : data["title"]).toString(),

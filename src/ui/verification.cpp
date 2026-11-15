@@ -351,6 +351,25 @@ int Window::verifyUi(const QString &output) {
                                              Json{{"title", "Required library"},
                                                   {"fileName", "library.jar"},
                                                   {"manual", true}}}}});
+    captureFeature("projectDetails", "project-details.png");
+    showProjectDetails(
+        this,
+        Json{{"title", "Sodium"},
+             {"description", "A modern rendering engine for Minecraft with excellent frame rates."},
+             {"body", "## Fast, compatible, and thoughtfully built\n\nA full project page keeps compatibility, "
+                      "release information, license details, and the complete description together."},
+             {"downloads", 64000000.0},
+             {"followers", 820000.0},
+             {"project_type", "mod"},
+             {"slug", "sodium"},
+             {"_authors", QJsonArray{"jellysquid3"}},
+             {"categories", QJsonArray{"optimization", "fabric", "quilt"}},
+             {"game_versions", QJsonArray{"1.21.1", "1.21", "1.20.6"}},
+             {"loaders", QJsonArray{"fabric", "quilt", "neoforge"}},
+             {"license", Json{{"name", "Polyform Shield"}}},
+             {"published", "2022-01-01T00:00:00Z"},
+             {"updated", "2026-11-01T00:00:00Z"}},
+        false, 1);
     showPage(1);
     searchType->setCurrentIndex(1);
     for (int i = 0; i < searchTarget->count(); ++i)

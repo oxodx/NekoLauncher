@@ -42,6 +42,7 @@ class Window : public QMainWindow {
     void updateSearchMode();
     void installSelectedMod();
     void installSelectedContent();
+    void openSelectedProject();
     void storageAction(int action);
     QComboBox *searchSort{}, *searchLoader{}, *searchCategory{}, *searchVersion{};
     QLabel *searchSummary{}, *searchSelection{};

@@ -170,6 +170,28 @@ void drawCover(QPainter &p, const QRectF &target, const QPixmap &image, qreal fo
                 source.width(), source.height());
     p.drawPixmap(target, image, crop);
 }
+void BackdropWidget::paintEvent(QPaintEvent *) {
+    QPainter p(this);
+    p.fillRect(rect(), palette().color(QPalette::Window));
+    p.setRenderHint(QPainter::Antialiasing);
+    auto accent = palette().color(QPalette::Highlight);
+    QRadialGradient upper(QPointF(width() * .78, -height() * .08), width() * .72);
+    auto glow = accent;
+    glow.setAlpha(palette().color(QPalette::Window).lightness() > 128 ? 13 : 20);
+    upper.setColorAt(0, glow);
+    upper.setColorAt(.52, QColor(glow.red(), glow.green(), glow.blue(), glow.alpha() / 3));
+    upper.setColorAt(1, Qt::transparent);
+    p.fillRect(rect(), upper);
+    QRadialGradient lower(QPointF(width() * .12, height() * 1.08), width() * .55);
+    const QColor cyan("#7dd3fc");
+    auto secondary = QColor::fromRgbF(accent.redF() * .6 + cyan.redF() * .4,
+                                      accent.greenF() * .6 + cyan.greenF() * .4,
+                                      accent.blueF() * .6 + cyan.blueF() * .4);
+    secondary.setAlpha(palette().color(QPalette::Window).lightness() > 128 ? 8 : 12);
+    lower.setColorAt(0, secondary);
+    lower.setColorAt(1, Qt::transparent);
+    p.fillRect(rect(), lower);
+}
 NavigationButton::NavigationButton(QString title, Glyph id, QWidget *parent)
     : QPushButton(title, parent), symbol(id) {
     setCheckable(true);
@@ -214,11 +236,21 @@ void NavigationButton::paintEvent(QPaintEvent *) {
     auto accent = pal.color(QPalette::Highlight),
          text = pal.color(isChecked() ? QPalette::Text : QPalette::PlaceholderText);
     auto wash = accent;
-    wash.setAlpha(isChecked() ? 25 : int(hover * 14));
+    wash.setAlpha(isChecked() ? 31 : int(hover * 17));
     p.setPen(Qt::NoPen);
     p.setBrush(wash);
-    p.drawRoundedRect(QRectF(rect()).adjusted(0, 0, -1, -1), 6, 6);
+    p.drawRoundedRect(QRectF(rect()).adjusted(0, 0, -1, -1), 11, 11);
     const bool expanded = width() > 100;
+    if (isChecked()) {
+        p.setBrush(accent);
+        p.drawRoundedRect(QRectF(0, 10, 3, height() - 20), 1.5, 1.5);
+        auto iconWash = accent;
+        iconWash.setAlpha(24);
+        p.setBrush(iconWash);
+        p.drawRoundedRect(expanded ? QRectF(8, 7, 28, 28)
+                                   : QRectF((width() - 28) / 2., 2, 28, 28),
+                          8, 8);
+    }
     glyph(symbol, isChecked() ? accent : text)
         .paint(&p, expanded ? QRect(12, 10, 20, 20) : QRect((width() - 20) / 2, 6, 20, 20));
     auto font = qApp->font();

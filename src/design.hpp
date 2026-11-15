@@ -22,6 +22,13 @@ enum class Glyph {
 };
 QIcon glyph(Glyph id, QColor color);
 void drawCover(QPainter &painter, const QRectF &target, const QPixmap &image, qreal focus = .5);
+class BackdropWidget final : public QWidget {
+  public:
+    using QWidget::QWidget;
+
+  protected:
+    void paintEvent(QPaintEvent *) override;
+};
 class NavigationButton final : public QPushButton {
     Glyph symbol;
     QVariantAnimation animation;

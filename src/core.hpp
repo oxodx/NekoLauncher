@@ -80,6 +80,7 @@ class Engine {
     Json importPack(const QString &archive, const QString &curseKey);
     QJsonArray search(const QString &query, bool curse, const QString &key);
     Json searchPage(const QString &query, bool curse, const QString &key, const Json &options);
+    Json projectDetails(const Json &project, bool curse, const QString &key);
     Json resolveModInstall(const Json &instance, const Json &project, bool curse, const QString &key);
     Json installModPlan(const Json &instance, const Json &plan);
     QString downloadPack(const Json &project, bool curse, const QString &key);

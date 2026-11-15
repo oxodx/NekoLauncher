@@ -68,12 +68,14 @@ QLabel { background:transparent; }
 #sidebarWordmark { font-size:22px; font-weight:650; letter-spacing:-.5px; }
 #navSection { font-size:9px; font-weight:600; letter-spacing:1.5px; color:%5; padding:15px 12px 7px; }
 #navVersion { font-size:9px; color:%5; padding:8px 12px; }
-#topbar { background:transparent; border-bottom:1px solid %4; }
+#topbar { background:rgba(0,0,0,5); border-bottom:1px solid %4; }
 #wordmark { color:%5; font-size:12px; }
 #editionBadge { color:%5; font-size:11px; }
 #eyebrow { font-size:10px; color:%5; letter-spacing:1px; }
 #libraryTitle, #title { font-size:28px; font-weight:650; letter-spacing:-.6px; }
 #sectionTitle { font-size:17px; font-weight:600; }
+#discoverSubtitle { color:%5; font-size:12px; }
+#catalogBadge { color:%6; background:%9; border:1px solid %4; border-radius:12px; padding:8px 12px; font-size:9px; font-weight:650; letter-spacing:1px; }
 #muted { color:%5; }
 #micro { color:%5; font-size:10px; }
 #heroText, #heroActions, #card { background:transparent; border:0; }
@@ -83,7 +85,7 @@ QLabel { background:transparent; }
 #heroActions QPushButton { font-size:13px; }
 QPushButton#heroShortcut { background:rgba(255,255,255,10); border:1px solid rgba(255,255,255,24); border-radius:8px; color:#d8d9e8; padding:6px 12px; font-size:12px; }
 QPushButton#heroShortcut:hover { background:rgba(255,255,255,26); border-color:#cba6f7; }
-QPushButton { background:transparent; border:1px solid %4; border-radius:9px; padding:9px 13px; font-weight:500; }
+QPushButton { background:transparent; border:1px solid %4; border-radius:10px; padding:9px 13px; font-weight:500; }
 QPushButton:hover { background:%4; border-color:%5; }
 QPushButton:pressed { border-color:%6; }
 QPushButton:disabled { color:%5; }
@@ -98,7 +100,7 @@ QPushButton#heroIcon::menu-indicator { image:none; }
 QPushButton#accountButton { background:%9; border:1px solid %4; border-radius:6px; padding:7px 12px; font-size:12px; }
 QPushButton#nav { background:transparent; border:0; padding:0; }
 QPushButton#nav:checked { background:transparent; }
-QLineEdit, QComboBox, QSpinBox, QPlainTextEdit { background:%1; border:1px solid %4; border-radius:6px; padding:10px; selection-background-color:%6; selection-color:%7; }
+QLineEdit, QComboBox, QSpinBox, QPlainTextEdit { background:%1; border:1px solid %4; border-radius:9px; padding:10px; selection-background-color:%6; selection-color:%7; }
 QPlainTextEdit { font-family:"JetBrains Mono", "DejaVu Sans Mono", monospace; }
 QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QPlainTextEdit:focus { border-color:%6; }
 QLineEdit[searchField="true"] { padding:11px 12px; background:%9; }
@@ -117,8 +119,8 @@ QTabWidget::pane { border:1px solid %4; border-radius:12px; background:%1; }
 QTabBar::tab { background:transparent; color:%5; padding:13px 16px; border-bottom:2px solid transparent; }
 QTabBar::tab:selected { color:%6; border-bottom:2px solid %6; }
 QTabBar::tab:hover { color:%2; }
-QTabBar#contentTabs { background:%9; border:1px solid %4; border-radius:7px; padding:4px; }
-QTabBar#contentTabs::tab { border:0; border-radius:4px; padding:7px 18px; margin:0 2px; color:%5; }
+QTabBar#contentTabs { background:%9; border:1px solid %4; border-radius:11px; padding:4px; }
+QTabBar#contentTabs::tab { border:0; border-radius:8px; padding:8px 18px; margin:0 2px; color:%5; }
 QTabBar#contentTabs::tab:selected { background:%4; color:%2; }
 QComboBox#modTarget { border-color:%5; padding:10px; }
 
@@ -143,6 +145,22 @@ QProgressBar::chunk { background:%6; border-radius:3px; }
 QTreeWidget { background:%9; border:1px solid %4; border-radius:8px; padding:6px; }
 QHeaderView::section { background:%3; color:%5; padding:9px; border:0; font-size:12px; font-weight:600; }
 QTreeWidget::item { padding:8px; }
+
+QDialog#projectDetails { background:%1; }
+#projectHero { background:%9; border-bottom:1px solid %4; }
+#projectIcon { background:%1; border:1px solid %4; border-radius:24px; }
+#projectKicker { color:%6; font-size:9px; font-weight:700; letter-spacing:1.7px; }
+#projectTitle { font-size:30px; font-weight:700; letter-spacing:-.7px; }
+#projectSummary { color:%5; font-size:13px; }
+#projectMeta { color:%6; font-size:11px; font-weight:550; }
+#projectContent { background:%1; }
+#projectContent::handle { background:%4; width:1px; }
+#projectFacts { background:%9; border-left:1px solid %4; }
+#projectFeature { background:%9; border:1px solid %4; border-radius:16px; }
+#projectDescription { background:transparent; color:%2; border:0; padding:0; font-size:%8px; }
+#projectFactLabel { color:%5; font-size:9px; font-weight:650; letter-spacing:1px; }
+#projectFactValue { color:%2; font-size:12px; }
+#projectFooter { background:%3; border-top:1px solid %4; }
 
 QToolTip { background:%9; color:%2; border:1px solid %4; padding:6px; }
 )QSS")

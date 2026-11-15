@@ -137,6 +137,49 @@ Json Engine::searchPage(const QString &query, bool curse, const QString &key, co
     return {{"hits", response[curse ? "data" : "hits"]},
             {"total", curse ? response["pagination"].toObject()["totalCount"] : response["total_hits"]}};
 }
+Json Engine::projectDetails(const Json &project, bool curse, const QString &key) {
+    if (curse) {
+        require(!key.isEmpty(), "Add a CurseForge API key in Settings first");
+        const auto id = project["id"].toInt();
+        require(id > 0, "Invalid CurseForge project ID");
+        auto details =
+            http.json("https://api.curseforge.com/v1/mods/" + QString::number(id), {},
+                      {{"x-api-key", key.toUtf8()}})["data"]
+                .toObject();
+        require(!details.isEmpty(), "CurseForge returned no project details");
+        try {
+            details["_descriptionHtml"] =
+                http.json("https://api.curseforge.com/v1/mods/" + QString::number(id) + "/description",
+                          {}, {{"x-api-key", key.toUtf8()}})["data"];
+        } catch (const Error &) {
+            http.checkCancelled();
+        }
+        return details;
+    }
+    auto id = project["project_id"].toString();
+    if (id.isEmpty())
+        id = project["id"].toString();
+    require(QRegularExpression("^[A-Za-z0-9_-]+$").match(id).hasMatch(),
+            "Invalid Modrinth project ID");
+    auto details = http.json("https://api.modrinth.com/v2/project/" + id);
+    const auto team = details["team"].toString();
+    if (!team.isEmpty()) {
+        try {
+            QJsonArray authors;
+            for (const auto &value : http.array("https://api.modrinth.com/v2/team/" + team + "/members")) {
+                const auto member = value.toObject();
+                if (!member["accepted"].toBool(true))
+                    continue;
+                const auto user = member["user"].toObject();
+                authors.append(user["username"].toString(user["name"].toString()));
+            }
+            details["_authors"] = authors;
+        } catch (const Error &) {
+            http.checkCancelled();
+        }
+    }
+    return details;
+}
 
 QString Engine::downloadPack(const Json &project, bool curse, const QString &key) {
     QString url, hash;

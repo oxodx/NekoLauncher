@@ -9,7 +9,18 @@ QWidget *Window::discoverPage() {
     auto *l = new QVBoxLayout(w);
     l->setContentsMargins(24, 20, 24, 20);
     l->setSizeConstraint(QLayout::SetMinimumSize);
-    l->addWidget(label("Discover", "title"));
+    auto *heading = new QHBoxLayout;
+    auto *headingText = new QVBoxLayout;
+    headingText->setSpacing(4);
+    headingText->addWidget(label("Discover", "title"));
+    headingText->addWidget(
+        label("Find the next chapter for your worlds—from complete packs to the smallest detail.",
+              "discoverSubtitle"));
+    heading->addLayout(headingText, 1);
+    auto *catalogBadge = label("MODRINTH  +  CURSEFORGE", "catalogBadge");
+    catalogBadge->setAlignment(Qt::AlignCenter);
+    heading->addWidget(catalogBadge, 0, Qt::AlignTop);
+    l->addLayout(heading);
     searchType = new QTabBar;
     searchType->setObjectName("contentTabs");
     searchType->addTab("Modpacks");
@@ -125,7 +136,7 @@ QWidget *Window::discoverPage() {
     results->setTextElideMode(Qt::ElideRight);
     results->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     results->setMinimumHeight(180);
-    results->setSpacing(8);
+    results->setSpacing(10);
     body->addWidget(discoverFilterPanel);
     body->addWidget(results, 1);
     l->addLayout(body, 1);
@@ -181,6 +192,9 @@ QWidget *Window::discoverPage() {
     });
     searchInstall->setObjectName("primary");
     searchInstall->setEnabled(false);
+    button("View details", actions, [this] { openSelectedProject(); })->setObjectName("secondaryAccent");
+    connect(results, &QListWidget::itemDoubleClicked, this,
+            [this](QListWidgetItem *) { openSelectedProject(); });
     connect(results, &QListWidget::currentItemChanged, this, [this](QListWidgetItem *item) {
         searchInstall->setEnabled(item != nullptr);
         if (!item) {

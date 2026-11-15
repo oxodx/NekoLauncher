@@ -154,6 +154,60 @@ int main(int argc, char **argv) {
             if (!fixture.isEmpty())
                 writeJson(fixture, {{"query", ""}, {"hits", hits}});
         }
+        if (app.arguments().contains("--content-integration")) {
+            const Json contentInstance{{"id", "content-integration"}, {"version", "1.21.1"}};
+            const auto resource = engine.installContent(
+                contentInstance, Json{{"project_id", "soft-bits"}}, "resourcepack", false, {});
+            const auto shader = engine.installContent(
+                contentInstance, Json{{"project_id", "seaglass-shaders"}}, "shader", false, {});
+            check(QFileInfo(resource).size() > 0 &&
+                      resource.startsWith(root + "/instances/content-integration/resourcepacks/"),
+                  "live Modrinth resource pack download");
+            check(QFileInfo(shader).size() > 0 &&
+                      shader.startsWith(root + "/instances/content-integration/shaderpacks/"),
+                  "live Modrinth shader download");
+        }
+        if (app.arguments().contains("--curse-content-integration")) {
+            const auto key = QSettings("NekoLauncher", "NekoLauncher").value("curseKey").toString();
+            check(!key.isEmpty(), "CurseForge API key is not configured in NekoLauncher settings");
+            const Json contentInstance{{"id", "curse-content-integration"}, {"version", "1.21.1"}};
+            for (const auto &kind : QStringList{"resourcepack", "shader", "world"}) {
+                const auto hits = engine.searchPage({}, true, key,
+                                                    {{"type", kind},
+                                                     {"version", "1.21.1"},
+                                                     {"sort", "downloads"},
+                                                     {"limit", 30}})["hits"]
+                                      .toArray();
+                check(!hits.isEmpty(), qPrintable("live CurseForge " + kind + " search"));
+                bool installed = false;
+                for (const auto &value : hits) {
+                    const auto project = value.toObject();
+                    QUrl endpoint("https://api.curseforge.com/v1/mods/" +
+                                  QString::number(project["id"].toInt()) + "/files");
+                    QUrlQuery query;
+                    query.addQueryItem("gameVersion", "1.21.1");
+                    query.addQueryItem("pageSize", "50");
+                    endpoint.setQuery(query);
+                    const auto files = engine.http
+                                           .json(endpoint.toString(), {}, {{"x-api-key", key.toUtf8()}})["data"]
+                                           .toArray();
+                    if (files.isEmpty())
+                        continue;
+                    const auto file = files.first().toObject();
+                    if (file["downloadUrl"].toString().isEmpty() ||
+                        file["fileLength"].toDouble() > 64 * 1024 * 1024)
+                        continue;
+                    try {
+                        const auto path = engine.installContent(contentInstance, project, kind, true, key);
+                        installed = QFileInfo(path).exists();
+                    } catch (const Error &) {
+                    }
+                    if (installed)
+                        break;
+                }
+                check(installed, qPrintable("live CurseForge " + kind + " download"));
+            }
+        }
         Json instance{{"id", "test-instance"},
                       {"version", "test"},
                       {"java", "custom-java"},

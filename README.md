@@ -120,6 +120,10 @@ See [Architecture and contributor guide](docs/ARCHITECTURE.md) for ownership bou
 
 Optional live service validation: `./build/core-tests --network` checks Mojang metadata, Fabric/Quilt profiles and Modrinth search. It also downloads the Fabric loader libraries into a temporary fixture and confirms the classpath JAR contains `KnotClient.class`. It does not download a game or sign into an account. `./build/core-tests --loader-integration` downloads and runs the two official loader installers in temporary directories and validates their launch plans (requires Java 21+, or set `NEKO_TEST_JAVA`). `./build/keychain-tests` tests secure write/read/delete with a synthetic credential under a unique test service, without reading launcher credentials; run it in a desktop session with a credential-store backend.
 
+`./build/core-tests --content-integration` performs real Modrinth resource-pack and shader downloads into a temporary instance, verifies their published hashes, and checks their final instance directories. It does not modify launcher data.
+
+`./build/core-tests --curse-content-integration` additionally searches and downloads a small compatible resource pack, shader, and world with the CurseForge API key already stored in NekoLauncher settings. It also uses only temporary instance data.
+
 Run `QT_QPA_PLATFORM=offscreen ./build/neko-launcher --smoke-test` for a headless GUI smoke test that writes `neko-preview.png` and exits. It does not launch Minecraft. To isolate settings/data while testing, set `XDG_CONFIG_HOME` and `XDG_DATA_HOME` on Linux.
 
 Service references: [Microsoft device authorization](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code), [Modrinth API](https://docs.modrinth.com/api/), [Modrinth pack specification](https://support.modrinth.com/en/articles/8802351-modrinth-modpack-format-mrpack), [CurseForge API](https://docs.curseforge.com/rest-api/).

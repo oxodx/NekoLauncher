@@ -7,7 +7,7 @@ set(CMAKE_AUTORCC ON)
 find_package(Qt6 6.4 REQUIRED COMPONENTS Widgets Network Concurrent)
 find_package(LibArchive REQUIRED)
 find_package(Qt6Keychain REQUIRED)
-find_package(Qt6QWebpPlugin REQUIRED PATH_SUFFIXES lib/cmake/Qt6Gui)
+find_package(Qt6QWebpPlugin QUIET PATH_SUFFIXES lib/cmake/Qt6Gui)
 add_library(neko_core
  src/core.cpp src/core.hpp src/instance_services.cpp src/instance_services.hpp src/mod_storage.cpp src/mod_storage.hpp src/file_ops.cpp src/file_ops.hpp
  src/core/archive.cpp src/core/http.cpp src/core/metadata.cpp
@@ -42,7 +42,9 @@ add_executable(neko-launcher
  src/ui/storage.cpp src/ui/storage.hpp src/ui/mod_browser.cpp src/ui/mod_browser.hpp src/ui/import.cpp src/ui/launch.cpp src/ui/jobs.cpp src/ui/verification.cpp
  src/ui/instance_tools.cpp src/ui/instance_tools.hpp src/ui/command_palette.cpp src/ui/command_palette.hpp
 )
-target_compile_definitions(neko-launcher PRIVATE NEKO_IMAGE_PLUGIN_PATH="$<TARGET_FILE_DIR:Qt6::QWebpPlugin>/..")
+if(TARGET Qt6::QWebpPlugin)
+ target_compile_definitions(neko-launcher PRIVATE NEKO_IMAGE_PLUGIN_PATH="$<TARGET_FILE_DIR:Qt6::QWebpPlugin>/..")
+endif()
 target_link_libraries(neko-launcher PRIVATE neko_core Qt6::Widgets Qt6::Concurrent qt6keychain)
 if(MSVC)
  target_compile_options(neko_core PRIVATE /W4)

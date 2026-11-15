@@ -83,6 +83,9 @@ class Engine {
     Json resolveModInstall(const Json &instance, const Json &project, bool curse, const QString &key);
     Json installModPlan(const Json &instance, const Json &plan);
     QString downloadPack(const Json &project, bool curse, const QString &key);
+    QString installContent(const Json &instance, const Json &project, const QString &kind, bool curse,
+                           const QString &key);
+    QString importWorld(const Json &instance, const QString &archive);
     Account authenticate(const QString &clientId, std::function<void(QString, QString)> code);
 
   private:

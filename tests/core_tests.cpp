@@ -37,6 +37,24 @@ void zip(const QString &file, const QString &name, bool symlink = false) {
     archive_write_close(a);
     archive_write_free(a);
 }
+void zipFiles(const QString &file, const QMap<QString, QByteArray> &files) {
+    auto *a = archive_write_new();
+    archive_write_set_format_zip(a);
+    archive_write_open_filename(a, QFile::encodeName(file).constData());
+    for (auto it = files.cbegin(); it != files.cend(); ++it) {
+        auto *e = archive_entry_new();
+        const auto name = it.key().toUtf8();
+        archive_entry_set_pathname(e, name.constData());
+        archive_entry_set_filetype(e, AE_IFREG);
+        archive_entry_set_perm(e, 0644);
+        archive_entry_set_size(e, it.value().size());
+        archive_write_header(a, e);
+        archive_write_data(a, it.value().constData(), it.value().size());
+        archive_entry_free(e);
+    }
+    archive_write_close(a);
+    archive_write_free(a);
+}
 int main(int argc, char **argv) {
     QCoreApplication app(argc, argv);
     try {
@@ -224,6 +242,40 @@ int main(int argc, char **argv) {
                   "pack loader retained");
             check(packInstance["loaderVersion"] == "47.1.0", "pack loader version retained");
         }
+        const Json prismDefinition{{"formatVersion", 1},
+                                   {"components",
+                                    QJsonArray{Json{{"uid", "net.minecraft"}, {"version", "1.20.1"}},
+                                               Json{{"uid", "net.fabricmc.fabric-loader"},
+                                                    {"version", "0.16.10"}}}}};
+        zipFiles(root + "/prism.zip",
+                 {{"Prism Test/mmc-pack.json", QJsonDocument(prismDefinition).toJson()},
+                  {"Prism Test/instance.cfg", "name=Neko Prism Export\n"},
+                  {"Prism Test/.minecraft/saves/Existing World/level.dat", "world"},
+                  {"Prism Test/.minecraft/resourcepacks/example.zip", "resource"},
+                  {"Prism Test/.minecraft/shaderpacks/example.zip", "shader"},
+                  {"Prism Test/.minecraft/screenshots/example.png", "image"}});
+        const auto prism = engine.importPack(root + "/prism.zip", {});
+        const auto prismPath = root + "/instances/" + prism["id"].toString();
+        check(prism["name"] == "Neko Prism Export" && prism["version"] == "1.20.1" &&
+                  prism["loader"] == "Fabric" && prism["loaderVersion"] == "0.16.10",
+              "Prism metadata imported");
+        check(QFile::exists(prismPath + "/saves/Existing World/level.dat") &&
+                  QFile::exists(prismPath + "/resourcepacks/example.zip") &&
+                  QFile::exists(prismPath + "/shaderpacks/example.zip") &&
+                  QFile::exists(prismPath + "/screenshots/example.png"),
+              "Prism instance content imported");
+        const Json worldTarget{{"id", "world-target"}};
+        zipFiles(root + "/world.zip", {{"Downloaded World/level.dat", "world-data"},
+                                        {"Downloaded World/region/r.0.0.mca", "region-data"}});
+        const auto firstWorld = engine.importWorld(worldTarget, root + "/world.zip");
+        const auto secondWorld = engine.importWorld(worldTarget, root + "/world.zip");
+        check(QFile::exists(firstWorld + "/level.dat") && QFile::exists(firstWorld + "/region/r.0.0.mca"),
+              "world ZIP imported with its contents");
+        check(firstWorld != secondWorld && QFileInfo(secondWorld).fileName() == "Downloaded World (2)",
+              "world import preserves an existing save");
+        zipFiles(root + "/not-a-world.zip", {{"readme.txt", "not a save"}});
+        rejects([&] { engine.importWorld(worldTarget, root + "/not-a-world.zip"); },
+                "archive without level.dat accepted as a world");
         if (app.arguments().contains("--loader-integration")) {
             for (const auto &loader : QStringList{"Forge", "NeoForge"}) {
                 Json loaderInstance{{"version", loader == "Forge" ? "1.20.1" : "1.21.1"},

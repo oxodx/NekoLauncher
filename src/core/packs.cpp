@@ -3,6 +3,57 @@
 #include "mod_storage.hpp"
 
 namespace neko {
+namespace {
+void copyTree(const QString &source, const QString &destination, const std::function<void()> &check = {}) {
+    require(QDir(source).exists(), "Import source is missing");
+    QDirIterator entries(source, QDir::Files | QDir::Dirs | QDir::Hidden | QDir::NoDotAndDotDot |
+                                     QDir::NoSymLinks,
+                         QDirIterator::Subdirectories);
+    while (entries.hasNext()) {
+        if (check)
+            check();
+        const auto path = entries.next();
+        const auto relative = QDir(source).relativeFilePath(path);
+        const auto target = safePath(destination, relative);
+        const QFileInfo info(path);
+        if (info.isDir()) {
+            require(QDir().mkpath(target), "Cannot create imported directory");
+            continue;
+        }
+        require(info.isFile(), "Unsupported file in import");
+        require(QDir().mkpath(QFileInfo(target).absolutePath()), "Cannot create import directory");
+        QFile input(path);
+        QSaveFile output(target);
+        require(input.open(QIODevice::ReadOnly) && output.open(QIODevice::WriteOnly),
+                "Cannot import " + relative);
+        while (!input.atEnd()) {
+            const auto bytes = input.read(65536);
+            require(!bytes.isEmpty() && output.write(bytes) == bytes.size(), "Cannot copy " + relative);
+        }
+        require(output.commit(), "Cannot save " + relative);
+    }
+}
+
+QString prismDefinition(const QString &directory) {
+    QDirIterator files(directory, {"mmc-pack.json"}, QDir::Files | QDir::NoSymLinks,
+                       QDirIterator::Subdirectories);
+    QStringList matches;
+    while (files.hasNext())
+        matches.append(files.next());
+    require(matches.size() <= 1, "Prism export contains multiple instances");
+    return matches.value(0);
+}
+
+QString uniqueChild(const QString &parent, QString name) {
+    name = name.trimmed();
+    require(!name.isEmpty() && !name.contains('/') && !name.contains('\\'), "Invalid imported name");
+    auto candidate = safePath(parent, name);
+    for (int suffix = 2; QFileInfo::exists(candidate); ++suffix)
+        candidate = safePath(parent, name + " (" + QString::number(suffix) + ")");
+    return candidate;
+}
+} // namespace
+
 Json Engine::officialArtwork(Json instance, const Json &project, bool curse) {
     QString url;
     if (curse) {
@@ -45,7 +96,14 @@ Json Engine::searchPage(const QString &query, bool curse, const QString &key, co
     if (curse) {
         require(!key.isEmpty(), "Add a CurseForge API key in Settings first");
         q.addQueryItem("gameId", "432");
-        q.addQueryItem("classId", options["type"] == "mod" ? "6" : "4471");
+        const QMap<QString, int> curseClasses{{"mod", 6},
+                                               {"resourcepack", 12},
+                                               {"world", 17},
+                                               {"modpack", 4471},
+                                               {"shader", 6552}};
+        const auto type = options["type"].toString("modpack");
+        require(curseClasses.contains(type), "Unsupported CurseForge content type");
+        q.addQueryItem("classId", QString::number(curseClasses[type]));
         q.addQueryItem("searchFilter", query);
         q.addQueryItem("pageSize", QString::number(limit));
         q.addQueryItem("index", QString::number(offset));
@@ -126,6 +184,123 @@ QString Engine::downloadPack(const Json &project, bool curse, const QString &key
     report("Downloading modpack");
     http.download(url, path, hash);
     return path;
+}
+
+QString Engine::importWorld(const Json &instance, const QString &archive) {
+    const auto id = instance["id"].toString();
+    require(!id.isEmpty() && !id.contains('/') && !id.contains('\\'), "Invalid instance ID");
+    QTemporaryDir staging;
+    require(staging.isValid(), "Cannot stage world import");
+    extract(archive, staging.path());
+    QStringList levels;
+    QDirIterator files(staging.path(), {"level.dat"}, QDir::Files | QDir::NoSymLinks,
+                       QDirIterator::Subdirectories);
+    while (files.hasNext())
+        levels.append(files.next());
+    require(levels.size() == 1, levels.isEmpty() ? "Archive contains no Java Edition world (level.dat)"
+                                                 : "Archive contains multiple worlds; import them separately");
+    const auto source = QFileInfo(levels.first()).absolutePath();
+    const auto saves = safePath(root, "instances/" + id + "/saves");
+    require(QDir().mkpath(saves), "Cannot create saves directory");
+    auto name = QFileInfo(source).fileName();
+    if (QDir(source).absolutePath() == QDir(staging.path()).absolutePath())
+        name = QFileInfo(archive).completeBaseName();
+    const auto target = uniqueChild(saves, name);
+    require(QDir().mkpath(target), "Cannot create world directory");
+    bool complete = false;
+    auto cleanup = qScopeGuard([&] {
+        if (!complete)
+            QDir(target).removeRecursively();
+    });
+    copyTree(source, target, [&] { http.checkCancelled(); });
+    complete = true;
+    report("Imported world " + QFileInfo(target).fileName());
+    return target;
+}
+
+QString Engine::installContent(const Json &instance, const Json &project, const QString &kind, bool curse,
+                               const QString &key) {
+    require(QStringList{"world", "resourcepack", "shader"}.contains(kind),
+            "Unsupported content type");
+    require(kind != "world" || curse, "World projects are available from CurseForge only");
+    require(!curse || !key.isEmpty(), "Add a CurseForge API key in Settings first");
+    const auto version = instance["version"].toString();
+    QString url, hash, filename;
+    auto algorithm = QCryptographicHash::Sha1;
+    if (curse) {
+        const auto id = QString::number(project["id"].toInt());
+        require(project["id"].toInt() > 0, "Invalid CurseForge project");
+        QUrl endpoint("https://api.curseforge.com/v1/mods/" + id + "/files");
+        QUrlQuery filters;
+        if (!version.isEmpty())
+            filters.addQueryItem("gameVersion", version);
+        filters.addQueryItem("pageSize", "50");
+        endpoint.setQuery(filters);
+        const auto files = http.json(endpoint.toString(), {}, {{"x-api-key", key.toUtf8()}})["data"].toArray();
+        require(!files.isEmpty(), "No compatible CurseForge files are available");
+        const auto file = files.first().toObject();
+        url = file["downloadUrl"].toString();
+        filename = file["fileName"].toString();
+        QString md5;
+        for (const auto &value : file["hashes"].toArray()) {
+            const auto item = value.toObject();
+            if (item["algo"].toInt() == 1)
+                hash = item["value"].toString();
+            if (item["algo"].toInt() == 2)
+                md5 = item["value"].toString();
+        }
+        if (hash.isEmpty() && !md5.isEmpty()) {
+            hash = md5;
+            algorithm = QCryptographicHash::Md5;
+        }
+        require(!url.isEmpty(), "The author disabled third-party downloads. Open the CurseForge project "
+                                "page and import the downloaded ZIP manually.");
+    } else {
+        const auto id = project["project_id"].toString(project["id"].toString());
+        require(!id.isEmpty(), "Invalid Modrinth project");
+        QUrl endpoint("https://api.modrinth.com/v2/project/" +
+                      QString::fromLatin1(QUrl::toPercentEncoding(id)) + "/version");
+        QUrlQuery filters;
+        if (!version.isEmpty())
+            filters.addQueryItem(
+                "game_versions",
+                QString::fromUtf8(QJsonDocument(QJsonArray{version}).toJson(QJsonDocument::Compact)));
+        endpoint.setQuery(filters);
+        const auto releases = http.array(endpoint.toString());
+        require(!releases.isEmpty(), "No compatible Modrinth versions are available");
+        const auto files = releases.first().toObject()["files"].toArray();
+        require(!files.isEmpty(), "Modrinth version has no files");
+        auto file = files.first().toObject();
+        for (const auto &value : files)
+            if (value.toObject()["primary"].toBool())
+                file = value.toObject();
+        url = file["url"].toString();
+        filename = file["filename"].toString();
+        const auto hashes = file["hashes"].toObject();
+        hash = hashes["sha512"].toString();
+        algorithm = QCryptographicHash::Sha512;
+        if (hash.isEmpty()) {
+            hash = hashes["sha1"].toString();
+            algorithm = QCryptographicHash::Sha1;
+        }
+    }
+    require(!filename.isEmpty() && !filename.contains('/') && !filename.contains('\\'),
+            "Provider returned an unsafe filename");
+    require(filename.endsWith(".zip", Qt::CaseInsensitive), "Content download is not a ZIP archive");
+    const auto cache = safePath(root, "cache/content-" + QUuid::createUuid().toString(QUuid::WithoutBraces) +
+                                          ".zip");
+    auto cleanup = qScopeGuard([&] { QFile::remove(cache); });
+    report("Downloading " + filename);
+    http.download(url, cache, hash, algorithm);
+    if (kind == "world")
+        return importWorld(instance, cache);
+    const auto child = kind == "shader" ? "shaderpacks" : "resourcepacks";
+    const auto directory = safePath(root, "instances/" + instance["id"].toString() + "/" + child);
+    require(QDir().mkpath(directory), "Cannot create content directory");
+    auto target = uniqueChild(directory, filename);
+    require(QFile::rename(cache, target), "Cannot install downloaded content");
+    report("Installed " + QFileInfo(target).fileName());
+    return target;
 }
 Json curseDownloadRequirement(const Json &metadata, int projectId, int fileId, const QString &website) {
     const auto name = metadata["fileName"].toString();
@@ -232,6 +407,61 @@ Json Engine::importPack(const QString &archive, const QString &key) {
     require(temp.isValid(), "Cannot create temporary directory");
     report("Inspecting modpack");
     extract(archive, temp.path());
+    const auto prismPack = prismDefinition(temp.path());
+    if (!prismPack.isEmpty()) {
+        const auto prismRoot = QFileInfo(prismPack).absolutePath();
+        const auto minecraft = QDir(prismRoot + "/.minecraft").exists()
+                                   ? prismRoot + "/.minecraft"
+                                   : prismRoot + "/minecraft";
+        require(QDir(minecraft).exists(), "Prism export has no .minecraft directory");
+        const auto definition = readJson(prismPack);
+        require(definition["formatVersion"].toInt() >= 1, "Unsupported Prism export format");
+        QString game, loader = "Vanilla", loaderVersion;
+        const QMap<QString, QString> loaders{{"net.fabricmc.fabric-loader", "Fabric"},
+                                              {"org.quiltmc.quilt-loader", "Quilt"},
+                                              {"net.minecraftforge", "Forge"},
+                                              {"net.neoforged", "NeoForge"}};
+        for (const auto &value : definition["components"].toArray()) {
+            const auto component = value.toObject();
+            const auto uid = component["uid"].toString();
+            if (uid == "net.minecraft")
+                game = component["version"].toString();
+            if (!loaders.contains(uid))
+                continue;
+            require(loader == "Vanilla", "Prism export specifies conflicting mod loaders");
+            loader = loaders[uid];
+            loaderVersion = component["version"].toString();
+        }
+        require(!game.isEmpty(), "Prism export is missing its Minecraft component");
+        QString name = QFileInfo(prismRoot).fileName();
+        const auto configuration = prismRoot + "/instance.cfg";
+        if (QFile::exists(configuration)) {
+            QSettings settings(configuration, QSettings::IniFormat);
+            name = settings.value("name", settings.value("General/name", name)).toString();
+        }
+        const auto id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        const auto dir = safePath(root, "instances/" + id);
+        require(QDir().mkpath(dir), "Cannot create Prism instance");
+        bool done = false;
+        auto cleanup = qScopeGuard([&] {
+            if (!done)
+                QDir(dir).removeRecursively();
+        });
+        copyTree(minecraft, dir, [&] { http.checkCancelled(); });
+        Json instance{{"id", id},
+                      {"name", name.trimmed().isEmpty() ? QString("Imported Prism instance") : name.trimmed()},
+                      {"version", game},
+                      {"loader", loader},
+                      {"loaderVersion", loaderVersion},
+                      {"memory", 4096},
+                      {"minMemory", 512},
+                      {"java", "java"}};
+        writeJson(dir + "/instance.json", instance);
+        ModStorage(root, [&] { http.checkCancelled(); }, progress).optimizeInstance(id);
+        done = true;
+        report("Imported Prism Launcher instance");
+        return instance;
+    }
     if (QFile::exists(temp.path() + "/instance.json") &&
         !QFile::exists(temp.path() + "/modrinth.index.json") &&
         !QFile::exists(temp.path() + "/manifest.json")) {

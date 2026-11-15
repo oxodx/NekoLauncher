@@ -198,6 +198,119 @@ void Window::editInstance() {
     environment->setMinimumHeight(100);
     f->addRow("Environment (JSON object)", environment);
     const auto instanceDir = root + "/instances/" + j["id"].toString();
+    auto browseContent = [this, j](const QString &kind, const QString &title,
+                                   const std::function<void()> &refresh) {
+        auto *dialog = new QDialog(this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->setWindowModality(Qt::WindowModal);
+        dialog->setWindowTitle("Download " + title);
+        dialog->resize(720, 520);
+        auto *layout = new QVBoxLayout(dialog);
+        layout->addWidget(label("Download " + title + " for " + j["name"].toString(), "sectionTitle"));
+        layout->addWidget(label(kind == "world"
+                                    ? "World projects are available through CurseForge. Downloads are "
+                                      "extracted into a new save without replacing existing worlds."
+                                    : "Search by the instance's Minecraft version. Downloads are verified "
+                                      "when the provider publishes a SHA-1 hash.",
+                                "muted"));
+        auto *toolbar = new QHBoxLayout;
+        layout->addLayout(toolbar);
+        auto *provider = new QComboBox;
+        if (kind == "world")
+            provider->addItem("CurseForge", true);
+        else {
+            provider->addItem("Modrinth", false);
+            provider->addItem("CurseForge", true);
+        }
+        toolbar->addWidget(provider);
+        auto *query = entry({}, "Search " + title.toLower() + "…");
+        toolbar->addWidget(query, 1);
+        auto *search = button("Search", toolbar, [] {});
+        auto *summary = label("Search to find compatible projects.", "muted");
+        layout->addWidget(summary);
+        auto *results = new QListWidget;
+        results->setTextElideMode(Qt::ElideRight);
+        layout->addWidget(results, 1);
+        auto *actions = new QHBoxLayout;
+        layout->addLayout(actions);
+        auto *project = button("Project page ↗", actions, [] {});
+        actions->addStretch();
+        auto *install = button("Download", actions, [] {});
+        install->setObjectName("primary");
+        project->setEnabled(false);
+        install->setEnabled(false);
+        auto performSearch = [=, this] {
+            const bool curse = provider->currentData().toBool();
+            const auto key = settings.value("curseKey").toString();
+            Json options{{"type", kind},
+                         {"version", j["version"]},
+                         {"sort", "downloads"},
+                         {"limit", 40}};
+            QPointer<QDialog> alive(dialog);
+            task(
+                [text = query->text().trimmed(), curse, key, options](Engine &engine) {
+                    return QVariant(engine.searchPage(text, curse, key, options));
+                },
+                [=](QVariant value) {
+                    if (!alive)
+                        return;
+                    results->clear();
+                    const auto hits = value.toJsonObject()["hits"].toArray();
+                    for (const auto &entry : hits) {
+                        const auto item = entry.toObject();
+                        auto *row = new QListWidgetItem(
+                            (curse ? item["name"] : item["title"]).toString(), results);
+                        row->setData(Qt::UserRole, item);
+                        row->setData(Qt::UserRole + 1, curse);
+                        row->setToolTip((curse ? item["summary"] : item["description"]).toString());
+                    }
+                    summary->setText(hits.isEmpty() ? "No compatible projects found."
+                                                    : QString("%1 project(s) found.").arg(hits.size()));
+                    if (!hits.isEmpty())
+                        results->setCurrentRow(0);
+                });
+        };
+        disconnect(search, nullptr, nullptr, nullptr);
+        connect(search, &QPushButton::clicked, dialog, performSearch);
+        connect(query, &QLineEdit::returnPressed, dialog, performSearch);
+        connect(results, &QListWidget::currentItemChanged, dialog, [=](QListWidgetItem *item) {
+            project->setEnabled(item);
+            install->setEnabled(item);
+        });
+        disconnect(project, nullptr, nullptr, nullptr);
+        connect(project, &QPushButton::clicked, dialog, [=] {
+            auto *item = results->currentItem();
+            if (!item)
+                return;
+            const auto metadata = item->data(Qt::UserRole).toJsonObject();
+            const bool curse = item->data(Qt::UserRole + 1).toBool();
+            const auto url = curse ? metadata["links"].toObject()["websiteUrl"].toString()
+                                   : "https://modrinth.com/" + kind + "/" + metadata["slug"].toString();
+            const QUrl page(url);
+            if (page.scheme() == "https")
+                QDesktopServices::openUrl(page);
+        });
+        disconnect(install, nullptr, nullptr, nullptr);
+        connect(install, &QPushButton::clicked, dialog, [=, this] {
+            auto *item = results->currentItem();
+            if (!item)
+                return;
+            const auto metadata = item->data(Qt::UserRole).toJsonObject();
+            const bool curse = item->data(Qt::UserRole + 1).toBool();
+            const auto key = settings.value("curseKey").toString();
+            QPointer<QDialog> alive(dialog);
+            task(
+                [j, metadata, kind, curse, key](Engine &engine) {
+                    return QVariant(engine.installContent(j, metadata, kind, curse, key));
+                },
+                [alive, refresh](QVariant) {
+                    refresh();
+                    if (alive)
+                        alive->accept();
+                });
+        });
+        dialog->show();
+    };
     auto filesTab = [&](const QString &title, const QString &child, const QString &patterns, bool toggle) {
         auto *panel = new QWidget;
         auto *layout = new QVBoxLayout(panel);
@@ -207,7 +320,8 @@ void Window::editInstance() {
         list->setMinimumHeight(160);
         layout->addWidget(list, 1);
         auto dir = instanceDir + "/" + child;
-        auto refresh = [list, dir, toggle] {
+        list->setIconSize(QSize(144, 81));
+        auto refresh = [list, dir, child, toggle] {
             list->clear();
             QDir folder(dir);
             for (const auto &file :
@@ -220,6 +334,21 @@ void Window::editInstance() {
                                         file.fileName());
                 item->setToolTip(file.fileName());
                 item->setData(Qt::UserRole, file.absoluteFilePath());
+                if (child == "screenshots" && file.isFile()) {
+                    QPixmap preview(file.absoluteFilePath());
+                    if (!preview.isNull())
+                        item->setIcon(QIcon(preview.scaled(144, 81, Qt::KeepAspectRatio,
+                                                          Qt::SmoothTransformation)));
+                    item->setText(file.completeBaseName() + "  ·  " +
+                                  QLocale().formattedDataSize(file.size()) + "  ·  " +
+                                  file.lastModified().toString("yyyy-MM-dd HH:mm"));
+                } else if (child == "saves" && file.isDir()) {
+                    const QFileInfo level(file.absoluteFilePath() + "/level.dat");
+                    item->setText("▣  " + file.fileName() +
+                                  (level.exists() ? "  ·  played " +
+                                                        level.lastModified().toString("yyyy-MM-dd HH:mm")
+                                                  : "  ·  incomplete world"));
+                }
                 list->addItem(item);
             }
         };
@@ -247,6 +376,45 @@ void Window::editInstance() {
                                                  " already exists or could not be copied.");
                 refresh();
             });
+        if (child == "saves") {
+            button("Import world ZIP…", buttons, [this, j, refresh] {
+                const auto archive = QFileDialog::getOpenFileName(this, "Import Java Edition world", {},
+                                                                  "World archives (*.zip)");
+                if (!archive.isEmpty())
+                    task([j, archive](Engine &engine) { return QVariant(engine.importWorld(j, archive)); },
+                         [refresh](QVariant) { refresh(); });
+            });
+            button("Browse CurseForge…", buttons,
+                   [browseContent, refresh] { browseContent("world", "worlds", refresh); });
+        } else if (child == "resourcepacks") {
+            button("Browse online…", buttons,
+                   [browseContent, refresh] { browseContent("resourcepack", "resource packs", refresh); });
+        } else if (child == "shaderpacks") {
+            button("Browse online…", buttons,
+                   [browseContent, refresh] { browseContent("shader", "shaders", refresh); });
+        } else if (child == "screenshots") {
+            button("Export selected…", buttons, [this, list] {
+                if (!list->currentItem())
+                    return;
+                const auto source = list->currentItem()->data(Qt::UserRole).toString();
+                const auto target = QFileDialog::getSaveFileName(this, "Export screenshot",
+                                                                 QFileInfo(source).fileName(),
+                                                                 "Images (*.png *.jpg *.jpeg)");
+                if (!target.isEmpty() && !QFile::copy(source, target))
+                    QMessageBox::warning(this, "Export failed", "The screenshot could not be copied.");
+            });
+            button("Delete selected", buttons, [this, list, refresh] {
+                if (!list->currentItem())
+                    return;
+                const auto path = list->currentItem()->data(Qt::UserRole).toString();
+                if (QMessageBox::question(this, "Delete screenshot",
+                                          "Delete " + QFileInfo(path).fileName() + " permanently?") ==
+                        QMessageBox::Yes &&
+                    !QFile::remove(path))
+                    QMessageBox::warning(this, "Delete failed", "The screenshot could not be removed.");
+                refresh();
+            });
+        }
         button("Open folder", buttons, [dir] {
             QDir().mkpath(dir);
             QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
@@ -261,6 +429,7 @@ void Window::editInstance() {
     filesTab("Resource packs", "resourcepacks", "Resource packs (*.zip)", true);
     filesTab("Shaders", "shaderpacks", "Shader packs (*.zip)", true);
     filesTab("Worlds", "saves", {}, false);
+    filesTab("Screenshots", "screenshots", "Images (*.png *.jpg *.jpeg)", false);
     filesTab("Logs", "logs", {}, false);
     filesTab("Crash reports", "crash-reports", {}, false);
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel);

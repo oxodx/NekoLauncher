@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install --yes --no-install-recommends \
+            cmake \
+            g++ \
+            libarchive-dev \
+            ninja-build \
+            qt6-base-dev \
+            qt6-image-formats-plugins \
+            qtkeychain-qt6-dev
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel 2
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Headless UI smoke test
+        env:
+          QT_QPA_PLATFORM: offscreen
+          XDG_CONFIG_HOME: /tmp/neko-ci-config
+          XDG_DATA_HOME: /tmp/neko-ci-data
+        run: ./build/neko-launcher --smoke-test

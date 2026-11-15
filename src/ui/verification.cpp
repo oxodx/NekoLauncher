@@ -63,6 +63,41 @@ int Window::verifyUi(const QString &output) {
                 ++failures;
         }
     }
+    {
+        // Exercise toggling with private fixture files, never installed game mods.
+        QTemporaryDir directory;
+        const auto enabled = directory.filePath("example.jar");
+        QFile file(enabled);
+        if (!file.open(QIODevice::WriteOnly) || file.write("fixture") != 7)
+            ++failures;
+        file.close();
+        mods->clear();
+        auto *item = new QListWidgetItem("example.jar", mods);
+        item->setData(Qt::UserRole, enabled);
+        modSearch->setText("does-not-match");
+        if (!item->isHidden())
+            ++failures;
+        modSearch->clear();
+        item->setSelected(true);
+        toggleMods(false);
+        if (!QFile::exists(enabled + ".disabled") || QFile::exists(enabled))
+            ++failures;
+        mods->clear();
+        item = new QListWidgetItem("example.jar.disabled", mods);
+        item->setData(Qt::UserRole, enabled + ".disabled");
+        modState->setCurrentIndex(1);
+        if (!item->isHidden())
+            ++failures;
+        modState->setCurrentIndex(2);
+        if (item->isHidden())
+            ++failures;
+        item->setSelected(true);
+        toggleMods(true);
+        if (!QFile::exists(enabled) || QFile::exists(enabled + ".disabled"))
+            ++failures;
+        modState->setCurrentIndex(0);
+        refreshMods();
+    }
     resize(700, 560);
     showPage(1);
     QApplication::processEvents();

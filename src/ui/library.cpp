@@ -13,7 +13,7 @@ QWidget *Window::libraryPage() {
     auto *lLocal = new QVBoxLayout(w);
     l = lLocal;
     l->setContentsMargins(30, 24, 30, 28);
-    l->setSpacing(24);
+    l->setSpacing(18);
     l->setSizeConstraint(QLayout::SetMinimumSize);
 
     auto *header = new QBoxLayout(QBoxLayout::LeftToRight);
@@ -22,8 +22,8 @@ QWidget *Window::libraryPage() {
     l->addLayout(header);
     auto *intro = new QVBoxLayout;
     intro->setSpacing(4);
-    intro->addWidget(label("Your library", "libraryTitle"));
-    intro->addWidget(label("Your worlds. Your mods. Your Minecraft.", "muted"));
+    intro->addWidget(label("Let’s play.", "libraryTitle"));
+    intro->addWidget(label("A space for every way you play Minecraft.", "muted"));
     header->addLayout(intro, 1);
     auto *headerActions = new QHBoxLayout;
     headerActions->setSpacing(8);
@@ -86,6 +86,13 @@ QWidget *Window::libraryPage() {
         label("Create a vanilla instance or import a Modrinth / CurseForge modpack to get started.", "muted");
     info->addWidget(detail);
     info->addStretch();
+    auto *shortcuts = new QHBoxLayout;
+    shortcuts->setSpacing(6);
+    info->addLayout(shortcuts);
+    button("Mods", shortcuts, [this] { showPage(2); })->setObjectName("heroShortcut");
+    button("Worlds", shortcuts, [this] { openInstanceFolder("saves"); })->setObjectName("heroShortcut");
+    button("Check", shortcuts, [this] { checkInstance(); })->setObjectName("heroShortcut");
+    shortcuts->addStretch();
     play = button("Launch Minecraft", actions, [this] { launch(); });
     play->setMinimumWidth(204);
     play->setMinimumHeight(48);

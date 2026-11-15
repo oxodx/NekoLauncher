@@ -81,7 +81,9 @@ QLabel { background:transparent; }
 #heroKicker { color:#cba6f7; font-size:10px; letter-spacing:2px; font-weight:600; }
 #heroText #muted { color:#bac2de; font-size:13px; }
 #heroActions QPushButton { font-size:13px; }
-QPushButton { background:transparent; border:1px solid %4; border-radius:6px; padding:9px 13px; font-weight:500; }
+QPushButton#heroShortcut { background:rgba(255,255,255,10); border:1px solid rgba(255,255,255,24); border-radius:8px; color:#d8d9e8; padding:6px 12px; font-size:12px; }
+QPushButton#heroShortcut:hover { background:rgba(255,255,255,26); border-color:#cba6f7; }
+QPushButton { background:transparent; border:1px solid %4; border-radius:9px; padding:9px 13px; font-weight:500; }
 QPushButton:hover { background:%4; border-color:%5; }
 QPushButton:pressed { border-color:%6; }
 QPushButton:disabled { color:%5; }

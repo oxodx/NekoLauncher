@@ -77,7 +77,7 @@ void LandscapeCard::paintEvent(QPaintEvent *) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
     QPainterPath mask;
-    mask.addRoundedRect(QRectF(rect()).adjusted(1, 1, -1, -1), 10, 10);
+    mask.addRoundedRect(QRectF(rect()).adjusted(1, 1, -1, -1), 18, 18);
     p.setClipPath(mask);
     const auto pal = qApp->palette();
     const auto accent = pal.color(QPalette::Highlight);
@@ -88,9 +88,22 @@ void LandscapeCard::paintEvent(QPaintEvent *) {
     if (!cover.isNull())
         drawCover(p, rect(), cover);
     else {
-        p.fillRect(rect(), base);
-        glyph(Glyph::Mods, pal.color(QPalette::Mid))
-            .paint(&p, QRect(width() - 132, height() / 2 - 32, 64, 64));
+        QLinearGradient backdrop(0, height(), width(), 0);
+        backdrop.setColorAt(0, QColor("#15151e"));
+        backdrop.setColorAt(1, blend(QColor("#181822"), accent, .23));
+        p.fillRect(rect(), backdrop);
+        QRadialGradient glow(QPointF(width() * .88, height() * .12), width() * .65);
+        auto tint = accent;
+        tint.setAlpha(38);
+        glow.setColorAt(0, tint);
+        glow.setColorAt(1, Qt::transparent);
+        p.fillRect(rect(), glow);
+        p.setPen(QPen(QColor(255, 255, 255, 9), 1));
+        p.setBrush(Qt::NoBrush);
+        for (int radius : {100, 165, 230})
+            p.drawEllipse(QPointF(width() - 20, height() / 2.), radius, radius);
+        glyph(Glyph::Mods, blend(base, accent, .45))
+            .paint(&p, QRect(width() - 118, height() / 2 - 27, 54, 54));
     }
     QLinearGradient scrim(0, 0, width(), 0);
     scrim.setColorAt(0, QColor(18, 18, 29, 255));
@@ -109,8 +122,7 @@ void LandscapeCard::paintEvent(QPaintEvent *) {
     border.setColorAt(1, QColor(255, 255, 255, 16));
     p.setPen(QPen(QBrush(border), 1));
     p.setBrush(Qt::NoBrush);
-    p.setPen(QPen(pal.color(QPalette::Mid), 1));
-    p.drawRoundedRect(QRectF(rect()).adjusted(.5, .5, -.5, -.5), 10, 10);
+    p.drawRoundedRect(QRectF(rect()).adjusted(.5, .5, -.5, -.5), 18, 18);
 }
 InstanceDelegate::InstanceDelegate(QObject *parent, std::function<void(QModelIndex)> action)
     : QStyledItemDelegate(parent), launch(std::move(action)) {}

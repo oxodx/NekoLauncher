@@ -23,7 +23,11 @@ class Window : public QMainWindow {
     QBoxLayout *libraryHeader{}, *profileActions{}, *discoverBody{};
     QWidget *discoverFilterPanel{};
     QNetworkAccessManager *artworkNetwork{};
-    QLineEdit *instanceSearch{};
+    QLineEdit *instanceSearch{}, *modSearch{};
+    QComboBox *modState{};
+    QLabel *modSummary{};
+    void filterMods();
+    void toggleMods(bool enabled);
     QCheckBox *favoritesOnly{};
     QLabel *pageTitle{}, *collectionCount{};
     QMenu *instanceActions{};

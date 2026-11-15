@@ -23,6 +23,8 @@ sudo apt install build-essential cmake qt6-base-dev qt6-image-formats-plugins li
 
 On NixOS: enter `nix-shell` using the included `shell.nix`, then run the build commands. Use a compiler and Qt from the same nixpkgs environment. An existing store-based validation build in this workspace is `build-verified/neko-launcher`.
 
+Run the packaged app directly with `nix run git+https://git.oxod.nl/oxod/NekoLauncher.git`. The flake also exposes `packages.default` / `packages.neko-launcher`, so another Nix configuration can install `inputs.nekolauncher.packages.${system}.default` without maintaining a separate derivation.
+
 On Windows, install Qt 6 and libarchive with a consistent MSVC or MinGW toolchain; pass the Qt install prefix and your dependency toolchain to CMake. On macOS, install Qt 6 and libarchive and add their prefixes to `CMAKE_PREFIX_PATH`. Only Linux has been compiled and smoke-tested here; Windows/macOS packaging is not provided.
 
 ## First launch

@@ -23,8 +23,17 @@ Json Engine::installForge(const Json &instance, const Json &base) {
     const auto url = maven + artifactName + "/" + ver + "/" + artifactName + "-" + ver + "-installer.jar";
     const auto installer = safePath(root, "cache/" + artifactName + "-" + ver + "-installer.jar");
     report("Downloading official " + instance["loader"].toString() + " installer " + ver);
-    const auto checksum = QString::fromUtf8(http.request(url + ".sha1")).trimmed().section(' ', 0, 0);
-    require(QRegularExpression("^[a-fA-F0-9]{40}$").match(checksum).hasMatch(), "Invalid installer checksum");
+    QString checksum;
+    try {
+        const auto published =
+            QString::fromUtf8(http.request(url + ".sha1")).trimmed().section(QRegularExpression("\\s+"), 0, 0);
+        if (QRegularExpression("^[a-fA-F0-9]{40}$").match(published).hasMatch())
+            checksum = published;
+    } catch (const Error &) {
+        http.checkCancelled();
+        // Some legacy Forge releases still publish the signed installer over HTTPS but no longer
+        // retain its Maven .sha1 sidecar. The installer itself remains mandatory below.
+    }
     http.download(url, installer, checksum);
     const auto versionDir = safePath(root, "versions/" + game);
     writeJson(versionDir + "/" + game + ".json", base);

@@ -14,6 +14,8 @@ QWidget *Window::discoverPage() {
     searchType->setObjectName("contentTabs");
     searchType->addTab("Modpacks");
     searchType->addTab("Mods");
+    searchType->addTab("Resource packs");
+    searchType->addTab("Shaders");
     searchType->setExpanding(false);
     searchType->setDrawBase(false);
     searchType->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
@@ -104,7 +106,7 @@ QWidget *Window::discoverPage() {
                 field->setEditText(field->itemText(0));
         }
         query->clear();
-        if (searchType->currentIndex() == 1)
+        if (searchType->currentIndex() >= 1)
             updateSearchMode();
         searchPacks();
     });
@@ -151,6 +153,10 @@ QWidget *Window::discoverPage() {
             installSelectedMod();
             return;
         }
+        if (searchType->currentIndex() >= 2) {
+            installSelectedContent();
+            return;
+        }
         auto j = item->data(Qt::UserRole).toJsonObject();
         auto cf = item->data(Qt::UserRole + 1).toBool();
         auto key = settings.value("curseKey").toString();
@@ -192,10 +198,10 @@ QWidget *Window::discoverPage() {
             return;
         auto j = i->data(Qt::UserRole).toJsonObject();
         auto cf = i->data(Qt::UserRole + 1).toBool();
+        const QStringList projectTypes{"modpack", "mod", "resourcepack", "shader"};
         QUrl url(cf ? j["links"].toObject()["websiteUrl"].toString()
-                    : "https://modrinth.com/" +
-                          QString(searchType->currentIndex() == 1 ? "mod/" : "modpack/") +
-                          j["slug"].toString());
+                    : "https://modrinth.com/" + projectTypes.value(searchType->currentIndex(), "modpack") +
+                          "/" + j["slug"].toString());
         if (url.scheme() == "https")
             QDesktopServices::openUrl(url);
     });
@@ -203,7 +209,7 @@ QWidget *Window::discoverPage() {
                               "filters. Some CurseForge files need browser downloads.");
     connect(searchType, &QTabBar::currentChanged, this, [this] { updateSearchMode(); });
     connect(searchTarget, &QComboBox::currentIndexChanged, this, [this] {
-        if (searchType->currentIndex() == 1)
+        if (searchType->currentIndex() >= 1)
             updateSearchMode();
     });
     return w;
@@ -238,15 +244,17 @@ void Window::searchPacks(bool reset) {
                  {"offset", searchOffset},
                  {"limit", 20}};
     const bool cf = provider->currentIndex() == 1;
-    options["type"] = searchType->currentIndex() == 1 ? "mod" : "modpack";
+    const QStringList contentTypes{"modpack", "mod", "resourcepack", "shader"};
+    options["type"] = contentTypes.value(searchType->currentIndex(), "modpack");
     if (!cf) {
         options["loader"] = searchLoader->currentData().toString();
         options["category"] = searchCategory->currentData().toString();
     }
-    if (searchType->currentIndex() == 1 && !searchTarget->currentData().toJsonObject().isEmpty()) {
+    if (searchType->currentIndex() >= 1 && !searchTarget->currentData().toJsonObject().isEmpty()) {
         const auto instance = searchTarget->currentData().toJsonObject();
         options["version"] = instance["version"];
-        options["loader"] = instance["loader"].toString().toLower();
+        if (searchType->currentIndex() == 1)
+            options["loader"] = instance["loader"].toString().toLower();
     }
     results->clear();
     searchPrevious->setEnabled(false);

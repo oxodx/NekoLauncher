@@ -376,6 +376,19 @@ int Window::verifyUi(const QString &output) {
         if (!grab().save(output + QString("/mod-browser-%1.png").arg(size.width())))
             ++failures;
     }
+    const QStringList contentActions{"Install resource pack", "Install shader"};
+    const QStringList contentPlaceholders{"Search resource packs…", "Search shaders…"};
+    for (int mode = 2; mode <= 3; ++mode) {
+        searchType->setCurrentIndex(mode);
+        QApplication::processEvents();
+        if (!searchTarget->isVisible() || searchVersion->isEnabled() || searchLoader->isEnabled() ||
+            searchInstall->text() != contentActions[mode - 2] ||
+            query->placeholderText() != contentPlaceholders[mode - 2] || searchCategory->count() < 2)
+            ++failures;
+        if (!grab().save(output + QString(mode == 2 ? "/resourcepack-browser.png"
+                                                     : "/shader-browser.png")))
+            ++failures;
+    }
     searchType->setCurrentIndex(0);
     if (searchTarget->isVisible() || !searchVersion->isEnabled())
         ++failures;

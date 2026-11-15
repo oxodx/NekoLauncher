@@ -6,6 +6,17 @@ QProcessEnvironment launchEnvironment(const Json &instance, QProcessEnvironment 
     for (auto it = overrides.begin(); it != overrides.end(); ++it)
         inherited.insert(it.key(), it.value().toString());
 #ifdef Q_OS_LINUX
+#ifdef NEKO_XRANDR_BINARY_DIR
+    // LWJGL 2 executes xrandr, independently of libXrandr loading. Keep the
+    // user's command first, but expose our packaged helper to desktop launches.
+    auto binaryPaths = inherited.value("PATH").split(':', Qt::SkipEmptyParts);
+    const auto helperDirectory = QString::fromUtf8(NEKO_XRANDR_BINARY_DIR);
+    if ((binaryPaths.isEmpty() || QStandardPaths::findExecutable("xrandr", binaryPaths).isEmpty()) &&
+        QFileInfo(helperDirectory + "/xrandr").isExecutable()) {
+        binaryPaths << helperDirectory;
+        inherited.insert("PATH", binaryPaths.join(':'));
+    }
+#endif
     const auto audio = instance["linuxAudio"].toString("auto");
     require(QStringList{"auto", "pipewire", "pulse", "alsa"}.contains(audio), "Invalid Linux audio backend");
     if (audio != "auto")

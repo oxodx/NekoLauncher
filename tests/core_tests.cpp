@@ -159,8 +159,8 @@ int main(int argc, char **argv) {
         }
         if (app.arguments().contains("--content-integration")) {
             const Json contentInstance{{"id", "content-integration"}, {"version", "1.21.1"}};
-            const auto resource = engine.installContent(
-                contentInstance, Json{{"project_id", "soft-bits"}}, "resourcepack", false, {});
+            const auto resource = engine.installContent(contentInstance, Json{{"project_id", "soft-bits"}},
+                                                        "resourcepack", false, {});
             const auto shader = engine.installContent(
                 contentInstance, Json{{"project_id", "seaglass-shaders"}}, "shader", false, {});
             check(QFileInfo(resource).size() > 0 &&
@@ -175,11 +175,12 @@ int main(int argc, char **argv) {
             check(!key.isEmpty(), "CurseForge API key is not configured in NekoLauncher settings");
             const Json contentInstance{{"id", "curse-content-integration"}, {"version", "1.21.1"}};
             for (const auto &kind : QStringList{"resourcepack", "shader", "world"}) {
-                const auto hits = engine.searchPage({}, true, key,
-                                                    {{"type", kind},
-                                                     {"version", "1.21.1"},
-                                                     {"sort", "downloads"},
-                                                     {"limit", 30}})["hits"]
+                const auto hits = engine
+                                      .searchPage({}, true, key,
+                                                  {{"type", kind},
+                                                   {"version", "1.21.1"},
+                                                   {"sort", "downloads"},
+                                                   {"limit", 30}})["hits"]
                                       .toArray();
                 check(!hits.isEmpty(), qPrintable("live CurseForge " + kind + " search"));
                 bool installed = false;
@@ -191,9 +192,9 @@ int main(int argc, char **argv) {
                     query.addQueryItem("gameVersion", "1.21.1");
                     query.addQueryItem("pageSize", "50");
                     endpoint.setQuery(query);
-                    const auto files = engine.http
-                                           .json(endpoint.toString(), {}, {{"x-api-key", key.toUtf8()}})["data"]
-                                           .toArray();
+                    const auto files =
+                        engine.http.json(endpoint.toString(), {}, {{"x-api-key", key.toUtf8()}})["data"]
+                            .toArray();
                     if (files.isEmpty())
                         continue;
                     const auto file = files.first().toObject();
@@ -299,18 +300,16 @@ int main(int argc, char **argv) {
                   "pack loader retained");
             check(packInstance["loaderVersion"] == "47.1.0", "pack loader version retained");
         }
-        const Json prismDefinition{{"formatVersion", 1},
-                                   {"components",
-                                    QJsonArray{Json{{"uid", "net.minecraft"}, {"version", "1.20.1"}},
-                                               Json{{"uid", "net.fabricmc.fabric-loader"},
-                                                    {"version", "0.16.10"}}}}};
-        zipFiles(root + "/prism.zip",
-                 {{"Prism Test/mmc-pack.json", QJsonDocument(prismDefinition).toJson()},
-                  {"Prism Test/instance.cfg", "name=Neko Prism Export\n"},
-                  {"Prism Test/.minecraft/saves/Existing World/level.dat", "world"},
-                  {"Prism Test/.minecraft/resourcepacks/example.zip", "resource"},
-                  {"Prism Test/.minecraft/shaderpacks/example.zip", "shader"},
-                  {"Prism Test/.minecraft/screenshots/example.png", "image"}});
+        const Json prismDefinition{
+            {"formatVersion", 1},
+            {"components", QJsonArray{Json{{"uid", "net.minecraft"}, {"version", "1.20.1"}},
+                                      Json{{"uid", "net.fabricmc.fabric-loader"}, {"version", "0.16.10"}}}}};
+        zipFiles(root + "/prism.zip", {{"Prism Test/mmc-pack.json", QJsonDocument(prismDefinition).toJson()},
+                                       {"Prism Test/instance.cfg", "name=Neko Prism Export\n"},
+                                       {"Prism Test/.minecraft/saves/Existing World/level.dat", "world"},
+                                       {"Prism Test/.minecraft/resourcepacks/example.zip", "resource"},
+                                       {"Prism Test/.minecraft/shaderpacks/example.zip", "shader"},
+                                       {"Prism Test/.minecraft/screenshots/example.png", "image"}});
         const auto prism = engine.importPack(root + "/prism.zip", {});
         const auto prismPath = root + "/instances/" + prism["id"].toString();
         check(prism["name"] == "Neko Prism Export" && prism["version"] == "1.20.1" &&
@@ -323,7 +322,7 @@ int main(int argc, char **argv) {
               "Prism instance content imported");
         const Json worldTarget{{"id", "world-target"}};
         zipFiles(root + "/world.zip", {{"Downloaded World/level.dat", "world-data"},
-                                        {"Downloaded World/region/r.0.0.mca", "region-data"}});
+                                       {"Downloaded World/region/r.0.0.mca", "region-data"}});
         const auto firstWorld = engine.importWorld(worldTarget, root + "/world.zip");
         const auto secondWorld = engine.importWorld(worldTarget, root + "/world.zip");
         check(QFile::exists(firstWorld + "/level.dat") && QFile::exists(firstWorld + "/region/r.0.0.mca"),
@@ -362,8 +361,8 @@ int main(int argc, char **argv) {
                               {"java", qEnvironmentVariable("NEKO_TEST_JAVA", "java")}};
             const auto profile = engine.installForge(legacy, engine.version("1.8.9"));
             const auto coordinate = QString("1.8.9-11.15.1.2318-1.8.9");
-            const auto library = root + "/libraries/net/minecraftforge/forge/" + coordinate +
-                                 "/forge-" + coordinate + ".jar";
+            const auto library =
+                root + "/libraries/net/minecraftforge/forge/" + coordinate + "/forge-" + coordinate + ".jar";
             check(profile["id"].toString().contains(coordinate) && QFileInfo(library).size() > 0,
                   "legacy Forge coordinate installs its bundled universal library");
             check(QFile::exists(root + "/versions/" + profile["id"].toString() + "/" +
@@ -451,9 +450,20 @@ int main(int argc, char **argv) {
         inherited.insert("LD_LIBRARY_PATH", "/old/lib");
         auto env = launchEnvironment(
             Json{{"nativePaths", "/custom/lib"}, {"environment", Json{{"NEKO_TEST", "value"}}}}, inherited);
-        check(env.value("NEKO_TEST") == "value" && env.value("PATH") == "/sample/bin",
+        check(env.value("NEKO_TEST") == "value" &&
+                  env.value("PATH").split(QDir::listSeparator()).first() == "/sample/bin",
               "launch environment preserves inherited variables");
 #ifdef Q_OS_LINUX
+        QTemporaryDir helperDirectory;
+        QFile helper(helperDirectory.filePath("xrandr"));
+        check(helper.open(QIODevice::WriteOnly) && helper.write("#!/bin/sh\nexit 0\n") > 0,
+              "create custom display helper");
+        helper.close();
+        helper.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+        auto helperEnvironment = inherited;
+        helperEnvironment.insert("PATH", helperDirectory.path());
+        check(launchEnvironment(Json{}, helperEnvironment).value("PATH") == helperDirectory.path(),
+              "existing xrandr command keeps its PATH precedence");
         check(launchEnvironment(Json{{"linuxDisplay", "x11"}}, inherited).value("SDL_VIDEODRIVER") == "x11",
               "explicit X11 backend");
         check(!launchEnvironment(Json{}, inherited).contains("SDL_VIDEODRIVER"),
